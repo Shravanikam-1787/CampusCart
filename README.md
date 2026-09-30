@@ -199,3 +199,57 @@ Ansible Configuration ──> Terraform Infrastructure ──> Selenium Automate
 10. **Selenium:** Automated browser end-to-end testing for the purchase workflow.
 
 *(Note: The DevOps stages listed above will be implemented incrementally in subsequent phases).*
+
+---
+
+## 🏗️ Jenkins CI (Continuous Integration Pipeline)
+
+CampusCart includes a production-ready, root-level declarative [`Jenkinsfile`](file:///Jenkinsfile) configured for automated Continuous Integration (CI).
+
+### 1. Prerequisites on Jenkins
+* **Jenkins 2.x+** with standard plugins installed (**Pipeline**, **Git**, and **JUnit**).
+* **JDK 17+** and **Apache Maven 3.8+** installed on the Jenkins controller or build agent and available in the system PATH.
+
+### 2. How to Create the Pipeline Job in Jenkins
+1. From the Jenkins Dashboard, click **New Item**.
+2. Enter item name: `CampusCart-CI`.
+3. Select **Pipeline** as the project type and click **OK**.
+4. In the job configuration page, scroll down to the **Pipeline** section:
+   * **Definition:** Select `Pipeline script from SCM`.
+   * **SCM:** Select `Git`.
+   * **Repository URL:** `https://github.com/Parth9P/CampusCart.git`
+   * **Credentials:** Leave blank (for public repository) or select configured Jenkins credentials.
+   * **Branch Specifier:** `*/main`
+   * **Script Path:** `Jenkinsfile`
+5. Click **Save**.
+
+### 3. How Jenkins Connects to the Repository
+Jenkins automatically fetches the source code using the standard SCM plugin. Credentials, if needed, are managed entirely through the Jenkins Credentials store (`Credentials ID`), ensuring that **no passwords, tokens, or private keys are ever stored inside the repository or the Jenkinsfile**.
+
+### 4. What the Pipeline Stages Do
+
+```text
+┌────────────┐     ┌───────────┐     ┌───────────┐     ┌──────────────┐     ┌─────────────────┐
+│  Checkout  │ ──> │   Build   │ ──> │   Test    │ ──> │   Package    │ ──> │  Build Summary  │
+│  (Git SCM) │     │ (Compile) │     │  (JUnit)  │     │ (Spring JAR) │     │ (build_log.txt) │
+└────────────┘     └───────────┘     └───────────┘     └──────────────┘     └─────────────────┘
+```
+
+1. **Checkout:** Clones the latest code commit from the `main` branch of `https://github.com/Parth9P/CampusCart.git`.
+2. **Build:** Runs `mvn compile` (cross-platform compatible via `sh` or `bat`) to verify that all Java source code compiles cleanly.
+3. **Test:** Executes automated unit and integration tests with `mvn test`. The build immediately stops and fails if any test fails. The `junit` post-action parses Surefire XML reports (`target/surefire-reports/*.xml`).
+4. **Package:** Runs `mvn package -DskipTests` to package the compiled application and static frontend into an executable JAR. Archives `target/campuscart-1.0.0.jar` as a Jenkins artifact.
+5. **Build Summary:** Dynamically queries the build environment (Java version, Maven version, commit hash, build status) and writes `build_log.txt`, archiving it for auditing and verification.
+
+### 5. Viewing Test Reports and Artifacts
+* **Test Results:** Click on **Test Result** in the left sidebar of any build to view individual test outcomes and stack traces. A **Test Result Trend** graph automatically visualizes test health over successive builds.
+* **Build Artifacts:** Under the **Build Artifacts** section on the build page, you can directly download:
+  * `target/campuscart-1.0.0.jar` (Executable Spring Boot JAR)
+  * `build_log.txt` (Build metadata and status log)
+
+### 6. Triggering a Build Manually
+To trigger a build for a lab demonstration:
+1. Open the `CampusCart-CI` job in Jenkins.
+2. Click **Build Now** in the left menu.
+3. Click on the active build number (e.g. `#1`) and select **Console Output** to observe live step-by-step stage execution.
+
