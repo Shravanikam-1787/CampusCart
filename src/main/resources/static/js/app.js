@@ -109,7 +109,7 @@ function renderProducts() {
 
                 <div class="product-action-row">
                     <div class="product-price">₹${product.price.toFixed(2)}</div>
-                    <button class="btn btn-primary" onclick="addToCart(${product.id}, this)">
+                    <button class="btn btn-primary add-to-cart-btn" id="add-to-cart-${product.id}" onclick="addToCart(${product.id}, this)">
                         + Add to Cart
                     </button>
                 </div>
@@ -207,7 +207,7 @@ function updateCartUI() {
     document.getElementById('proceedToCheckoutBtn').disabled = false;
 
     itemsList.innerHTML = cart.map(item => `
-        <div class="cart-item">
+        <div class="cart-item" id="cart-item-${item.product.id}">
             <div class="cart-item-details">
                 <div class="cart-item-name">${escapeHtml(item.product.name)}</div>
                 <div class="cart-item-unit-price">₹${item.product.price.toFixed(2)} each</div>

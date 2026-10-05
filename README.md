@@ -48,7 +48,7 @@ College students frequently need stationery supplies—such as exam-ruled notebo
 | **Data Store** | In-Memory Repositories | `ConcurrentHashMap` with pre-loaded college catalog (zero DB setup required) |
 | **Frontend** | HTML5, CSS3, Vanilla JavaScript | Responsive flex/grid design, SVG stationery icons, zero heavy UI frameworks |
 | **Build Tool** | Apache Maven 3.9+ | Standard Maven layout with JUnit 5 & Spring MockMvc testing |
-| **Testing** | JUnit 5 & Spring Boot Test | Automated unit and integration tests |
+| **Testing** | JUnit 5, Spring Boot Test & Selenium | Automated unit, integration, and E2E browser tests |
 
 ---
 
@@ -94,6 +94,7 @@ CampusCart/
             └── com/
                 └── campuscart/
                     ├── CampusCartApplicationTests.java
+                    ├── CampusCartSeleniumTest.java
                     ├── controller/
                     │   ├── OrderControllerTest.java
                     │   └── ProductControllerTest.java
@@ -252,4 +253,66 @@ To trigger a build for a lab demonstration:
 1. Open the `CampusCart-CI` job in Jenkins.
 2. Click **Build Now** in the left menu.
 3. Click on the active build number (e.g. `#1`) and select **Console Output** to observe live step-by-step stage execution.
+
+---
+
+## 🧪 Selenium Test Automation
+
+### 1. Purpose of Selenium Testing
+Selenium WebDriver provides automated browser-based End-to-End (E2E) testing. While unit tests and MockMvc integration tests verify business logic and API contracts in isolation, Selenium validates the actual user experience in a real browser engine—ensuring that dynamic DOM manipulation, JavaScript event listeners, asynchronous API fetches, slide-out drawer animations, modal dialogs, and local storage state behave correctly from an end student's perspective.
+
+### 2. Selenium Dependency
+The project uses `selenium-java` version `4.25.0` configured in [`pom.xml`](pom.xml) under the `<scope>test</scope>`:
+```xml
+<dependency>
+    <groupId>org.seleniumhq.selenium</groupId>
+    <artifactId>selenium-java</artifactId>
+    <version>4.25.0</version>
+    <scope>test</scope>
+</dependency>
+```
+With Selenium 4.6+, **Selenium Manager** is built-in and automatically detects the local browser (e.g. Google Chrome or Microsoft Edge) and provisions the exact matching driver binary in the background, eliminating any need to manually download or configure `chromedriver.exe` in the system PATH.
+
+### 3. Browser Requirement
+* **Google Chrome** (or Chromium) installed on the host machine.
+* Tests run by default in headless mode (`--headless=new`, `--no-sandbox`, `--disable-dev-shm-usage`) to execute cleanly on both local developer workstations and headless CI build machines without requiring a display server.
+
+### 4. How to Start CampusCart & Run Tests
+There are two supported workflows:
+
+#### Workflow A: Standard Two-Terminal Workflow (Recommended for Lab Demonstrations & Viva)
+1. **Terminal 1 — Start the Application:**
+   ```bash
+   mvn spring-boot:run
+   ```
+   Wait until you see: `Tomcat started on port 8080 (http)`.
+2. **Terminal 2 — Run the Selenium E2E Suite:**
+   ```bash
+   mvn test -Dtest=CampusCartSeleniumTest
+   ```
+
+#### Workflow B: Automated Standalone Execution
+Run the entire automated test suite directly without starting a background server manually. The test class automatically boots an embedded Spring Boot instance on port `8080` if none is detected, executes all browser and unit tests, and terminates cleanly:
+```bash
+mvn clean test
+```
+
+### 5. Scenarios Tested
+The test class [`CampusCartSeleniumTest.java`](src/test/java/com/campuscart/CampusCartSeleniumTest.java) executes 4 core student user journeys:
+
+| Test ID | Test Method | Scenario Description | Expected Outcome |
+| :--- | :--- | :--- | :--- |
+| **Test 1** | `testHomepageLoadsAndBrandingVisible` | Navigate to `http://localhost:8080/` | Page title contains `CampusCart`, navbar displays brand logo & text, hero banner and stationery catalog product cards render. |
+| **Test 2** | `testProductAddToCartUpdatesBadge` | Locate product (*Spiral Notebook*) and click `+ Add to Cart` | Button triggers visual feedback and navbar cart badge count increments from `0` to `1`. |
+| **Test 3** | `testCartDrawerDisplaysItemDetailsAndTotal` | Add item, open slide-out cart drawer | Cart drawer opens, shows item name (*Spiral Notebook*), unit price, quantity (`1`), subtotal (`₹60.00`), and grand total (`₹60.00`). |
+| **Test 4** | `testCheckoutAndOrderConfirmationFlow` | Add item, open drawer, proceed to checkout, enter student details, submit order | Checkout modal opens, form inputs accept student details, `POST /api/orders` succeeds, confirmation modal displays sequential Order ID (e.g., `CC-1001`), customer name, and total. |
+
+### 6. Test Isolation & Reliability
+* **Predictable State:** Each test runs `@BeforeEach` which navigates to `http://localhost:8080/`, clears browser `localStorage` (`localStorage.clear()`), refreshes the page, and waits for dynamic product cards to load.
+* **Explicit Waits:** All interactions use `WebDriverWait` with `ExpectedConditions` to accommodate asynchronous REST API calls and CSS slide/fade animations without arbitrary thread sleeps.
+
+### 7. Environment Limitations & Notes
+* If running on a minimal Linux headless server (such as Docker or minimal VM), Chrome and its dependent libraries (`libnss3`, `libgconf-2-4`, etc.) must be installed.
+* On Windows workstations with Google Chrome installed, Selenium Manager seamlessly manages driver downloads and headless execution out of the box.
+
 
