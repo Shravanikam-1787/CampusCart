@@ -315,4 +315,83 @@ The test class [`CampusCartSeleniumTest.java`](src/test/java/com/campuscart/Camp
 * If running on a minimal Linux headless server (such as Docker or minimal VM), Chrome and its dependent libraries (`libnss3`, `libgconf-2-4`, etc.) must be installed.
 * On Windows workstations with Google Chrome installed, Selenium Manager seamlessly manages driver downloads and headless execution out of the box.
 
+---
+
+## 🚀 Jenkins CI Demonstration
+
+### 1. Overview & Objective
+CampusCart includes an automated, declarative Continuous Integration (CI) pipeline configured via [`Jenkinsfile`](Jenkinsfile). The pipeline ensures that every commit pushed to GitHub is automatically checked out, built with Maven, thoroughly tested, and packaged into an executable Spring Boot artifact with archived build logs and JUnit reports.
+
+### 2. Jenkins Architecture & Port Allocation
+* **CampusCart Web Application:** Runs on port `8080` (`http://localhost:8080/`).
+* **Jenkins Controller:** Runs on port `8081` (`http://localhost:8081/`) to prevent port conflicts with the running web application or automated tests.
+* **Environment:** Completely standalone execution on Windows without Docker or Kubernetes.
+
+### 3. Step-by-Step Jenkins Setup (Beginner-Friendly)
+To run Jenkins on Windows without complex installers:
+
+1. **Download Jenkins Standalone WAR:**
+   Download the official Jenkins LTS `.war` file from:
+   [https://get.jenkins.io/war-stable/latest/jenkins.war](https://get.jenkins.io/war-stable/latest/jenkins.war)
+   Place `jenkins.war` into a local directory (e.g., `C:\Jenkins\` or `C:\Users\<user>\AppData\Local\Programs\Jenkins\`).
+
+2. **Start the Jenkins Server:**
+   Open PowerShell or Command Prompt and run:
+   ```bash
+   java -Djenkins.enableFutureJava=true -jar jenkins.war --httpPort=8081
+   ```
+   *(Note: `-Djenkins.enableFutureJava=true` ensures compatibility across modern Java runtimes).*
+
+3. **Unlock Jenkins:**
+   * Open your browser and navigate to: `http://localhost:8081/`
+   * Copy the initial administrator password from the console or file:
+     `C:\Users\<YourUsername>\.jenkins\secrets\initialAdminPassword`
+   * Paste the password and click **Continue**.
+
+4. **Install Plugins:**
+   * Select **"Install suggested plugins"** (installs Pipeline, Git, JUnit, and Workspace plugins).
+   * Create your first Admin User credentials and complete the wizard.
+
+### 4. Creating the CampusCart Pipeline Job
+1. From the Jenkins Dashboard, click **New Item**.
+2. Enter item name: `CampusCart-Pipeline`.
+3. Select **Pipeline** as the project type and click **OK**.
+4. Scroll down to the **Pipeline** configuration section:
+   * **Definition:** Select `Pipeline script from SCM`.
+   * **SCM:** Select `Git`.
+   * **Repository URL:** `https://github.com/Shravanikam-1787/CampusCart.git`
+   * **Credentials:** Leave `- none -` (public repository).
+   * **Branch Specifier:** `*/main`.
+   * **Script Path:** `Jenkinsfile`.
+5. Click **Save**.
+
+### 5. Executing the Pipeline
+1. On the `CampusCart-Pipeline` project page, click **Build Now** in the left sidebar.
+2. Monitor progress in the **Stage View** or click the build number (e.g., `#1`) -> **Console Output**.
+
+### 6. Pipeline Stages Explained
+
+```mermaid
+graph TD
+    A["Stage 1: Checkout<br/>git clone / fetch from GitHub"] --> B["Stage 2: Build<br/>mvn compile"]
+    B --> C["Stage 3: Test<br/>mvn test & publish JUnit XML"]
+    C --> D["Stage 4: Package<br/>mvn package -DskipTests & archive JAR"]
+    D --> E["Stage 5: Build Summary<br/>Generate & archive build_log.txt"]
+```
+
+* **Stage 1: Checkout:** Clones source code and history from `https://github.com/Shravanikam-1787/CampusCart.git` on branch `main`.
+* **Stage 2: Build:** Validates project structure and compiles all Java source classes with `mvn compile`.
+* **Stage 3: Test:** Executes automated unit and integration tests with `mvn test`, publishing Surefire XML test reports.
+* **Stage 4: Package:** Packages compiled classes and resources into `target/campuscart-1.0.0.jar` and archives the artifact in Jenkins.
+* **Stage 5: Build Summary:** Generates a clean text summary (`build_log.txt`) containing build number, commit hash, environment versions, and status.
+
+### 7. Verifying Results & Viva Q&A
+* **Viewing Test Reports:** Click the build number -> **Test Result** to inspect individual JUnit assertions and execution times.
+* **Downloading the Artifact:** Click the build number -> **Build Artifacts** -> download `campuscart-1.0.0.jar`.
+* **Build Summary:** Under **Build Artifacts**, view `build_log.txt` for an instant audit trail.
+* **Interpreting Status:**
+  * 🟢 **SUCCESS:** All stages passed, unit tests succeeded, and the JAR was archived.
+  * 🔴 **FAILURE:** Any compiler error, test assertion failure, or syntax issue halts the pipeline immediately and highlights the failed stage in red.
+
+
 
